@@ -18,7 +18,7 @@ int main()
   while(1)
   {
     int tp = 500; // Pulse time in ms. pt is proportional to distance
-    double strength = 0.01; // strength is proportional to volume
+    double strength = 0.05; // strength is proportional to volume
     buzzBuzzer(tp,strength);
   }
 }
