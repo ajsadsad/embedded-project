@@ -9,26 +9,55 @@
 #define MAX 255
 #define PWMOUT PD6
 #define UST PD2 // Ultrasonic sensor trigger pin
-#define USE PD3 // Ultrasonic sensor echo pin 
+#define USE PD3 // Ultrasonic sensor echo pin
+#define BTN1 PD0 // Button to turn system on and off
+#define BTN2 PD1 // Button to adjust volume of system
 
 int setPrescaler_tc0(char option);
 void set_tc0_mode(char mode);
-void buzzBuzzer(double pulseTime, double volume); 
-double getDistance(); 
-void debounceBtn(); 
+void buzzBuzzer(double pulseTime, double volume);
+double getDistance();
+void debounceBtn();
+
+volatile unsigned long numOV = 0;
 
 int main()
 {
-  bitSet(DDRD, UST); 
-  bitClear(DDRD, USE); 
-  char button1 = 0; 
-  char button2 = 0; 
+  bitSet(DDRD, UST);
+  bitClear(DDRD, USE);
+  bitClear(DDRD, BTN1);
+  bitSet(PORTD, BTN1);
+  bitClear(DDRD, BTN2);
+  bitSet(PORTD, BTN2);
+
+  char button1 = '0';
+  char button2 = '0';
+
+  usart_init(103);
 
   while(1)
   {
-    double tp = 500; // Pulse time in ms. pt is proportional to distance
-    double strength = 0.01; // strength is proportional to volume
-    buzzBuzzer(tp,strength);
+    // double tp = 500; // Pulse time in ms. pt is proportional to distance
+    // double strength = 0.01; // strength is proportional to volume
+    // buzzBuzzer(tp,strength);
+
+    if((PIND & (1 << BTN1))) {
+      if(button1 == '0') {
+        button1 = '1';
+        usart_tx_string(">a:");
+        usart_tx_string("1");
+        usart_transmit('\n');
+      }
+      _delay_ms(50);
+    } else if((PIND & (1 << BTN1))) {
+      if(button1 == '1') {
+        button1 = '0';
+        usart_tx_string(">a:");
+        usart_tx_string("0");
+        usart_transmit('\n');
+      }
+      _delay_ms(50);
+    }
   }
 }
 
@@ -39,11 +68,11 @@ void debounceBtn() {
 double getDistance() {
 
   long duration = 0;
-  bitClear(PORTD, PORTD2); 
+  bitClear(PORTD, PORTD2);
   _delay_us(5);
-  bitSet(PORTD, PORTD2); 
+  bitSet(PORTD, PORTD2);
   _delay_us(10);
-  bitClear(PORTD, PORTD2); 
+  bitClear(PORTD, PORTD2);
 
   while(!(PIND & (1 << PIND3))) {
   }
@@ -51,14 +80,14 @@ double getDistance() {
     duration = duration + 1;
   }
 
-  double distance = (duration / 2) / 29.1; 
+  double distance = (duration / 2);
   /*
-    Currently in CMs but maybe we just change it so that it set OCR0A here as to not waste a cycle? 
-                  Echo reading 
+    Currently in CMs but maybe we just change it so that it set OCR0A here?
+                  Echo reading
       OCR0A =  ------------------- x MAX
                  Echo reading max
 
-  */ 
+  */
   return distance;
 }
 
