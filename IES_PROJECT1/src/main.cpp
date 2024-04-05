@@ -8,23 +8,62 @@
 
 #define MAX 255
 #define PWMOUT PD6
+#define UST PD2 // Ultrasonic sensor trigger pin
+#define USE PD3 // Ultrasonic sensor echo pin 
 
 int setPrescaler_tc0(char option);
 void set_tc0_mode(char mode);
-void buzzBuzzer(int pulseTime, double volume); 
+void buzzBuzzer(double pulseTime, double volume); 
+double getDistance(); 
+void debounceBtn(); 
 
 int main()
 {
+  bitSet(DDRD, UST); 
+  bitClear(DDRD, USE); 
+  char button1 = 0; 
+  char button2 = 0; 
+
   while(1)
   {
-    int tp = 500; // Pulse time in ms. pt is proportional to distance
+    double tp = 500; // Pulse time in ms. pt is proportional to distance
     double strength = 0.01; // strength is proportional to volume
     buzzBuzzer(tp,strength);
   }
 }
 
+void debounceBtn() {
+
+}
+
+double getDistance() {
+
+  long duration = 0;
+  bitClear(PORTD, PORTD2); 
+  _delay_us(5);
+  bitSet(PORTD, PORTD2); 
+  _delay_us(10);
+  bitClear(PORTD, PORTD2); 
+
+  while(!(PIND & (1 << PIND3))) {
+  }
+  while((PIND & (1 << PIND3))) {
+    duration = duration + 1;
+  }
+
+  double distance = (duration / 2) / 29.1; 
+  /*
+    Currently in CMs but maybe we just change it so that it set OCR0A here as to not waste a cycle? 
+                  Echo reading 
+      OCR0A =  ------------------- x MAX
+                 Echo reading max
+
+  */ 
+  return distance;
+}
+
 // Buzzes the Buzzer for a certain pulseTime, at a certain strength determined by volume.
-void buzzBuzzer(int pulseTime, double volume)
+void buzzBuzzer(double pulseTime, double volume)
 {
   set_tc0_mode(3); // Fast PWM MAX
   bitSet(TCCR0A,COM0A1); // Clear OC0A on compare match
