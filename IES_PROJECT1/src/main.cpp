@@ -10,14 +10,13 @@
 #define PWMOUT PD6
 #define UST PD2 // Ultrasonic sensor trigger pin
 #define USE PD3 // Ultrasonic sensor echo pin
-#define BTN1 PD0 // Button to turn system on and off
-#define BTN2 PD1 // Button to adjust volume of system
+#define BTN1 PB5 // Button to turn system on and off
+#define BTN2 PB4 // Button to adjust volume of system
 
 int setPrescaler_tc0(char option);
 void set_tc0_mode(char mode);
 void buzzBuzzer(double pulseTime, double volume);
 double getDistance();
-void debounceBtn();
 
 volatile unsigned long numOV = 0;
 
@@ -25,15 +24,18 @@ int main()
 {
   bitSet(DDRD, UST);
   bitClear(DDRD, USE);
-  bitClear(DDRD, BTN1);
-  bitSet(PORTD, BTN1);
-  bitClear(DDRD, BTN2);
-  bitSet(PORTD, BTN2);
 
-  char button1 = '0';
-  char button2 = '0';
+  bitClear(DDRB, BTN1);
+  bitSet(PORTB, BTN1);
+  bitClear(DDRB, BTN2);
+  bitSet(PORTB, BTN2);
 
-  usart_init(103);
+  //test LED
+  bitSet(DDRB, PB3);
+  bitSet(PORTB, PB3);
+
+  int debounceCounter = 0;
+  int secondDebounceCounter = 0;
 
   while(1)
   {
@@ -41,28 +43,33 @@ int main()
     // double strength = 0.01; // strength is proportional to volume
     // buzzBuzzer(tp,strength);
 
-    if((PIND & (1 << BTN1))) {
-      if(button1 == '0') {
-        button1 = '1';
-        usart_tx_string(">a:");
-        usart_tx_string("1");
-        usart_transmit('\n');
+    if(!(bitRead(PINB, BTN1))) {
+      _delay_ms(1);
+      if(!(bitRead(PINB, BTN1))) {
+        debounceCounter++;
+        if(debounceCounter >= 20) {
+          _delay_ms(50);
+          bitInverse(PORTB, PB3);
+          debounceCounter = 0;
+        }
+      } else {
+        debounceCounter = 0;
       }
-      _delay_ms(50);
-    } else if((PIND & (1 << BTN1))) {
-      if(button1 == '1') {
-        button1 = '0';
-        usart_tx_string(">a:");
-        usart_tx_string("0");
-        usart_transmit('\n');
+    }
+
+    if(!(bitRead(PINB, BTN2))) {
+      _delay_ms(1);
+      if(!(bitRead(PINB, BTN2))) {
+        secondDebounceCounter++;
+        if(secondDebounceCounter >= 20) {
+          // turn on / off the system.
+          secondDebounceCounter = 0;
+        }
+      } else {
+        secondDebounceCounter = 0;
       }
-      _delay_ms(50);
     }
   }
-}
-
-void debounceBtn() {
-
 }
 
 double getDistance() {
