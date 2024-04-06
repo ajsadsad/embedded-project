@@ -34,6 +34,8 @@ volatile bool btn1_status;
 volatile bool btn2_status_old = 1;
 volatile bool btn2_status;
 
+volatile char num_btn2_presses = 0;
+
 ISR(INT1_vect) {
   btn1_status = bitRead(PIND, BTN1);
 
@@ -59,8 +61,14 @@ ISR(INT0_vect) {
     if(btn2_status != btn2_status_old) {
       btn2_status_old = btn2_status;
       if(btn2_status == 0) {
-        bitInverse(PORTB, PB3);
-        btn2_status_old = 1;
+        if(num_btn2_presses == 2) {
+          bitInverse(PORTB, PB3);
+          btn2_status_old = 1;
+          num_btn2_presses = 0;
+        } else {
+          btn2_status_old = 1;
+          num_btn2_presses++;
+        }
       }
     }
   }
