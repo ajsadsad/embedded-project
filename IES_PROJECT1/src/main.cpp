@@ -21,7 +21,7 @@ int main()
   while(1)
   {
     int tp = 500; // Pulse time in ms. pt is proportional to distance
-    double buzzer_strength = 1; // strength is proportional to volume
+    double buzzer_strength = 0.01; // strength is proportional to volume
     double led_strength = 1; // strength is proportional to photoresistor value
     
     pwmController(tp, buzzer_strength, led_strength);
@@ -35,12 +35,15 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
   set_tc0_mode(3); // Fast PWM MAX
   setPrescaler_tc0(3); // 64 -> 976.56Hz wave
   
+  bitSet(TCCR0A,COM0A1); // Clear OC0A on compare match
+  bitSet(TCCR0A,COM0B1); // Clear OC0B on compare match
+                         
   // Toggle output ON/OFF for certain pulseTime
-  buzzBuzzer(1.0);
+  buzzBuzzer(buzzer_strength);
   _delay_ms(pulseTime);
 
 
-  blinkLED(1.0);
+  blinkLED(led_strength);
   _delay_ms(pulseTime);
 }
 
@@ -49,16 +52,13 @@ void buzzBuzzer(double volume)
 {
   bitClear(DDRD,LED_PWM_OUT);
   bitSet(DDRD,BUZZER_PWM_OUT);
-  bitSet(TCCR0A,COM0A1); // Clear OC0A on compare match
   OCR0A = volume*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
 }
 
 void blinkLED(double photores) {
   bitClear(DDRD,BUZZER_PWM_OUT);
   bitSet(DDRD,LED_PWM_OUT);
-  bitSet(TCCR0A,COM0B1); // Clear OC0B on compare match
-  bitClear(TCCR0A,COM0B0); // Clear OC0B on compare match
-  OCR0A = photores*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
+  OCR0B = photores*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
 }
 
 int setPrescaler_tc0(char option)
