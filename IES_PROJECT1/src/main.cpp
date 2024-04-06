@@ -61,14 +61,8 @@ ISR(INT0_vect) {
     if(btn2_status != btn2_status_old) {
       btn2_status_old = btn2_status;
       if(btn2_status == 0) {
-        if(num_btn2_presses == 2) {
-          bitInverse(PORTB, PB3);
-          btn2_status_old = 1;
-          num_btn2_presses = 0;
-        } else {
-          btn2_status_old = 1;
-          num_btn2_presses++;
-        }
+        bitInverse(PORTB, PB3);
+        btn2_status_old = 1;
       }
     }
   }
