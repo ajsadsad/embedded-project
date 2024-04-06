@@ -7,8 +7,14 @@
 #include "bit.h"
 
 #define MAX 255
+
 #define BUZZER_PWM_OUT PD6
 #define LED_PWM_OUT PD5
+
+#define UST PD2 // Ultrasonic sensor trigger pin
+#define USE PD3 // Ultrasonic sensor echo pin
+#define BTN1 PB5 // Button to turn system on and off
+#define BTN2 PB4 // Button to adjust volume of system
 
 int setPrescaler_tc0(char option);
 void set_tc0_mode(char mode);
@@ -17,12 +23,28 @@ void blinkLED(double photores);
 void pwmController(int pulseTime, double buzzer_strength, double led_strength);
 void init_adc();
 uint16_t read_adc();
+double getDistance();
 
 int main()
 {
   init_adc();
   usart_init(8);
+  
+  bitSet(DDRD, UST);
+  bitClear(DDRD, USE);
 
+  bitClear(DDRB, BTN1);
+  bitSet(PORTB, BTN1);
+  bitClear(DDRB, BTN2);
+  bitSet(PORTB, BTN2);
+
+  //test LED
+  bitSet(DDRB, PB3);
+  bitSet(PORTB, PB3);
+
+  int debounceCounter = 0;
+  int secondDebounceCounter = 0;
+  
   while(1)
   {
     int tp = 500; // Pulse time in ms. pt is proportional to distance
@@ -30,7 +52,58 @@ int main()
     double led_strength = (read_adc())/1000.0; // strength is proportional to photoresistor value
     
     pwmController(tp, buzzer_strength, led_strength);
+    
+    if(!(bitRead(PINB, BTN1))) {
+      _delay_ms(1);
+      if(!(bitRead(PINB, BTN1))) {
+        debounceCounter++;
+        if(debounceCounter >= 20) {
+          _delay_ms(50);
+          bitInverse(PORTB, PB3);
+          debounceCounter = 0;
+        }
+      } else {
+        debounceCounter = 0;
+      }
+    }
+
+    if(!(bitRead(PINB, BTN2))) {
+      _delay_ms(1);
+      if(!(bitRead(PINB, BTN2))) {
+        secondDebounceCounter++;
+        if(secondDebounceCounter >= 20) {
+          // turn on / off the system.
+          secondDebounceCounter = 0;
+        }
+      } else {
+        secondDebounceCounter = 0;
+      }
+    }
+
+double getDistance() {
+
+  long duration = 0;
+  bitClear(PORTD, PORTD2);
+  _delay_us(5);
+  bitSet(PORTD, PORTD2);
+  _delay_us(10);
+  bitClear(PORTD, PORTD2);
+
+  while(!(PIND & (1 << PIND3))) {
   }
+  while((PIND & (1 << PIND3))) {
+    duration = duration + 1;
+  }
+
+  double distance = (duration / 2);
+  /*
+    Currently in CMs but maybe we just change it so that it set OCR0A here?
+                  Echo reading
+      OCR0A =  ------------------- x MAX
+                 Echo reading max
+
+  */
+  return distance;
 }
 
 /*
