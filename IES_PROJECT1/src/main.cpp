@@ -136,13 +136,15 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
 
   // Toggle output ON/OFF for certain pulseTime
   buzzBuzzer(buzzer_strength);
+  blinkLED(led_strength);
   int j = 0;
   while(j < pulseTime) {
     _delay_ms(1);
     j++;
   }
 
-  blinkLED(led_strength);
+  bitClear(DDRD,LED_PWM_OUT);
+  bitClear(DDRD,BUZZER_PWM_OUT);
   int i = 0;
   while(i < pulseTime) {
     _delay_ms(1);
@@ -153,13 +155,11 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
 // Buzzes the Buzzer for a certain pulseTime, at a certain strength determined by volume.
 void buzzBuzzer(double volume)
 {
-  bitClear(DDRD,LED_PWM_OUT);
   bitSet(DDRD,BUZZER_PWM_OUT);
   OCR0A = volume*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
 }
 
 void blinkLED(double photores) {
-  bitClear(DDRD,BUZZER_PWM_OUT);
   bitSet(DDRD,LED_PWM_OUT);
   OCR0B = photores*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
 }
