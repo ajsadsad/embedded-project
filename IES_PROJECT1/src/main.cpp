@@ -97,7 +97,7 @@ int main()
 
     int pt = 2000 * distance; // Pulse time in ms. pt is proportional to distance
     double buzzer_strength = 0.01; // strength is proportional to volume
-    double led_strength = (read_adc())/1064.0; // strength is proportional to photoresistor value
+    double led_strength = (read_adc())/1024.0; // strength is proportional to photoresistor value
     pwmController(pt, buzzer_strength, led_strength);
     _delay_ms(5);
   }
@@ -136,6 +136,8 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
   bitSet(TCCR0A,COM0A1); // Clear OC0A on compare match
   bitSet(TCCR0A,COM0B1); // Clear OC0B on compare match
 
+  // with prescaler 64, an overflow would take (16e3/64)/256 = 0.97 ms
+  // therefore, we can assume that each overflow is roughly 1 ms in this scenario
   if (numOV < pulseTime) {
     return;
   }
@@ -170,7 +172,7 @@ void init_adc() {
   bitSet(ADMUX, REFS0);
   bitClear(ADMUX, REFS1);
 
-  // ADC prescaler
+  // ADC prescaler: 1024
   bitSet(ADCSRA, ADPS2);
   bitSet(ADCSRA, ADPS1);
   bitSet(ADCSRA, ADPS0);
