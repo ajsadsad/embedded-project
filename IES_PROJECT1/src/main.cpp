@@ -67,10 +67,12 @@ int main()
 
     if(btn1_status != btn1_status_old) {
       btn1_status = bitRead(PIND, BTN1);
+      _delay_ms(50);
       if(btn1_status != btn1_status_old) {
         btn1_status_old = btn1_status;
-        if(btn1_status == 0 && debounceOV > 50) {
-          bitInverse(PORTB, PB3);
+        if(btn1_status == 0) {
+          set_tc0_mode('0');
+          setPrescaler_tc0('0');
           btn1_status_old = 1;
           debounceOV = 0;
         }
@@ -98,10 +100,6 @@ int main()
     pwmController(pt, buzzer_strength, led_strength);
     _delay_ms(5);
   }
-}
-
-void debounceBtn() {
-
 }
 
 double getDistance() {
