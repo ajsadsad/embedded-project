@@ -34,44 +34,21 @@ volatile bool btn1_status;
 volatile bool btn2_status_old = 1;
 volatile bool btn2_status;
 
-volatile char num_btn2_presses = 0;
+volatile unsigned long numOV = 0;
+volatile unsigned long debounceOV = 0;
 
-ISR(INT1_vect) {
-  btn1_status = bitRead(PIND, BTN1);
-
-  if(btn1_status != btn1_status_old) {
-    _delay_ms(10);
-    btn1_status = bitRead(PIND, BTN1);
-    if(btn1_status != btn1_status_old) {
-      btn1_status_old = btn1_status;
-      if(btn1_status == 0) {
-        bitInverse(PORTB, PB3);
-        btn1_status_old = 1;
-      }
-    }
-  }
-}
-
-ISR(INT0_vect) {
-  btn2_status = bitRead(PIND, BTN2);
-
-  if(btn2_status != btn2_status_old) {
-    _delay_ms(10);
-    btn2_status = bitRead(PIND, BTN2);
-    if(btn2_status != btn2_status_old) {
-      btn2_status_old = btn2_status;
-      if(btn2_status == 0) {
-        bitInverse(PORTB, PB3);
-        btn2_status_old = 1;
-      }
-    }
-  }
+ISR(TIMER0_OVF_vect) {
+  numOV++;
+  debounceOV++;
 }
 
 int main()
 {
   init_adc();
   init_btns();
+
+  // set timer 0 overflow
+  bitSet(TIMSK0, TOIE0);
 
   //test LED
   bitSet(DDRB, PB3);
@@ -82,17 +59,49 @@ int main()
   bitClear(DDRB, PB4);
 
   sei();
+  double buzzer_strength = 0.01; // strength is proportional to volume
 
-  usart_init(103);
   while(1)
   {
+    btn1_status = bitRead(PIND, BTN1);
+
+    if(btn1_status != btn1_status_old) {
+      btn1_status = bitRead(PIND, BTN1);
+      if(btn1_status != btn1_status_old) {
+        btn1_status_old = btn1_status;
+        if(btn1_status == 0 && debounceOV > 50) {
+          bitInverse(PORTB, PB3);
+          btn1_status_old = 1;
+          debounceOV = 0;
+        }
+      }
+    }
+
+    btn2_status = bitRead(PIND, BTN2);
+
+    if(btn2_status != btn2_status_old) {
+      btn2_status = bitRead(PIND, BTN2);
+      if(btn2_status != btn2_status_old) {
+        btn2_status_old = btn2_status;
+        if(btn2_status == 0 && debounceOV > 50) {
+          bitInverse(PORTB, PB3);
+          btn2_status_old = 1;
+          debounceOV = 0;
+        }
+      }
+    }
+
     double distance = getDistance();
 
     int pt = 2000 * distance; // Pulse time in ms. pt is proportional to distance
-    double buzzer_strength = 0.01; // strength is proportional to volume
-    double led_strength = (read_adc())/1000.0; // strength is proportional to photoresistor value
+    double led_strength = (read_adc())/1024.0; // strength is proportional to photoresistor value
     pwmController(pt, buzzer_strength, led_strength);
+    _delay_ms(5);
   }
+}
+
+void debounceBtn() {
+
 }
 
 double getDistance() {
@@ -128,22 +137,23 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
   bitSet(TCCR0A,COM0A1); // Clear OC0A on compare match
   bitSet(TCCR0A,COM0B1); // Clear OC0B on compare match
 
+  // with prescaler 64, an overflow would take (16e3/64)/256 = 0.97 ms
+  // therefore, we can assume that each overflow is roughly 1 ms in this scenario
+  if (numOV < pulseTime) {
+    return;
+  }
   // Toggle output ON/OFF for certain pulseTime
   buzzBuzzer(buzzer_strength);
   blinkLED(led_strength);
-  int j = 0;
-  while(j < pulseTime) {
-    _delay_ms(1);
-    j++;
-  }
 
-  bitClear(DDRD,LED_PWM_OUT);
-  bitClear(DDRD,BUZZER_PWM_OUT);
-  int i = 0;
-  while(i < pulseTime) {
-    _delay_ms(1);
-    i++;
+  if (numOV < pulseTime * 2) {
+    return;
   }
+  bitInverse(DDRD,LED_PWM_OUT);
+  bitInverse(DDRD,BUZZER_PWM_OUT);
+
+
+  numOV = 0;
 }
 
 // Buzzes the Buzzer for a certain pulseTime, at a certain strength determined by volume.
@@ -155,7 +165,7 @@ void buzzBuzzer(double volume)
 
 void blinkLED(double photores) {
   bitSet(DDRD,LED_PWM_OUT);
-  OCR0B = photores*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
+  OCR0B = photores*(MAX/2); // Set OCR0B according to photoresistor output
 }
 
 void init_adc() {
@@ -163,7 +173,7 @@ void init_adc() {
   bitSet(ADMUX, REFS0);
   bitClear(ADMUX, REFS1);
 
-  // ADC prescaler
+  // ADC prescaler: 1024
   bitSet(ADCSRA, ADPS2);
   bitSet(ADCSRA, ADPS1);
   bitSet(ADCSRA, ADPS0);
@@ -220,11 +230,5 @@ void init_btns() {
 
   //interrupt for INT1
   bitSet(SREG, SREG_I);
-  bitSet(EICRA, ISC11);
-  bitClear(EICRA, ISC10);
-  bitSet(EIMSK, INT1);
-  //Interrupt for INT0
-  bitSet(EICRA, ISC01);
-  bitClear(EICRA, ISC00);
-  bitSet(EIMSK, INT0);
+
 }
