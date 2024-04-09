@@ -30,6 +30,7 @@ double getDistance();
 
 volatile bool btn1_status_old = 1;
 volatile bool btn1_status;
+volatile bool timer_on = 1;
 
 volatile bool btn2_status_old = 1;
 volatile bool btn2_status;
@@ -58,6 +59,7 @@ int main()
   bitSet(DDRB, PB5);
   bitClear(DDRB, PB4);
 
+  setPrescaler_tc0(3); // 64 -> 976.56Hz wave
   sei();
   double buzzer_strength = 0.01; // strength is proportional to volume
 
@@ -66,11 +68,18 @@ int main()
     btn1_status = bitRead(PIND, BTN1);
 
     if(btn1_status != btn1_status_old) {
+      _delay_ms(10);
       btn1_status = bitRead(PIND, BTN1);
       if(btn1_status != btn1_status_old) {
         btn1_status_old = btn1_status;
-        if(btn1_status == 0 && debounceOV > 50) {
+        if( debounceOV > 50 && btn1_status == 0)  {
           bitInverse(PORTB, PB3);
+          if (timer_on) {
+            timer_on = 0;
+          } else {
+            timer_on = 1;
+          }
+
           btn1_status_old = 1;
           debounceOV = 0;
         }
@@ -80,6 +89,7 @@ int main()
     btn2_status = bitRead(PIND, BTN2);
 
     if(btn2_status != btn2_status_old) {
+      _delay_ms(10);
       btn2_status = bitRead(PIND, BTN2);
       if(btn2_status != btn2_status_old) {
         btn2_status_old = btn2_status;
@@ -132,7 +142,6 @@ double getDistance() {
  * */
 void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
   set_tc0_mode(3); // Fast PWM MAX
-  setPrescaler_tc0(3); // 64 -> 976.56Hz wave
 
   bitSet(TCCR0A,COM0A1); // Clear OC0A on compare match
   bitSet(TCCR0A,COM0B1); // Clear OC0B on compare match
@@ -143,14 +152,16 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
     return;
   }
   // Toggle output ON/OFF for certain pulseTime
-  buzzBuzzer(buzzer_strength);
-  blinkLED(led_strength);
+  if (timer_on) {
+    buzzBuzzer(buzzer_strength);
+    blinkLED(led_strength);
+  }
 
   if (numOV < pulseTime * 2) {
     return;
   }
-  bitInverse(DDRD,LED_PWM_OUT);
-  bitInverse(DDRD,BUZZER_PWM_OUT);
+  bitClear(DDRD,LED_PWM_OUT);
+  bitClear(DDRD,BUZZER_PWM_OUT);
 
 
   numOV = 0;
