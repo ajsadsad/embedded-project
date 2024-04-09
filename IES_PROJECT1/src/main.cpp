@@ -86,7 +86,7 @@ int main()
     btn2_status = bitRead(PIND, BTN2);
 
     if(btn2_status != btn2_status_old) {
-      _delay_ms(20);
+      _delay_ms(10);
       btn2_status = bitRead(PIND, BTN2);
       if(btn2_status != btn2_status_old) {
         btn2_status_old = btn2_status;
