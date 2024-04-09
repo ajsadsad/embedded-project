@@ -36,11 +36,9 @@ volatile bool btn2_status_old = 1;
 volatile bool btn2_status;
 
 volatile unsigned long numOV = 0;
-volatile unsigned long debounceOV = 0;
 
 ISR(TIMER0_OVF_vect) {
   numOV++;
-  debounceOV++;
 }
 
 int main()
@@ -72,7 +70,7 @@ int main()
       btn1_status = bitRead(PIND, BTN1);
       if(btn1_status != btn1_status_old) {
         btn1_status_old = btn1_status;
-        if( debounceOV > 50 && btn1_status == 0)  {
+        if( btn1_status == 0)  {
           bitInverse(PORTB, PB3);
           if (timer_on) {
             timer_on = 0;
@@ -81,7 +79,6 @@ int main()
           }
 
           btn1_status_old = 1;
-          debounceOV = 0;
         }
       }
     }
@@ -89,14 +86,13 @@ int main()
     btn2_status = bitRead(PIND, BTN2);
 
     if(btn2_status != btn2_status_old) {
-      _delay_ms(10);
+      _delay_ms(20);
       btn2_status = bitRead(PIND, BTN2);
       if(btn2_status != btn2_status_old) {
         btn2_status_old = btn2_status;
-        if(btn2_status == 0 && debounceOV > 50) {
+        if(btn2_status == 0) {
           bitInverse(PORTB, PB3);
           btn2_status_old = 1;
-          debounceOV = 0;
         }
       }
     }
@@ -118,7 +114,7 @@ double getDistance() {
 
   long duration = 0;
   bitClear(PORTB, UST);
-  _delay_us(5);
+  _delay_us(20);
   bitSet(PORTB, UST);
   _delay_us(10);
   bitClear(PORTB, UST);
