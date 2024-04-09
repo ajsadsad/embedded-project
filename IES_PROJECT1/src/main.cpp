@@ -37,6 +37,8 @@ volatile bool btn2_status;
 
 volatile unsigned long numOV = 0;
 
+volatile int volumeLvl= 0;
+
 ISR(TIMER0_OVF_vect) {
   numOV++;
 }
@@ -59,7 +61,7 @@ int main()
 
   setPrescaler_tc0(3); // 64 -> 976.56Hz wave
   sei();
-  double buzzer_strength = 0.01; // strength is proportional to volume
+  double buzzer_strength[] = {0.01, 0.10, 0.5}; // strength is proportional to volume
 
   while(1)
   {
@@ -77,7 +79,6 @@ int main()
           } else {
             timer_on = 1;
           }
-
           btn1_status_old = 1;
         }
       }
@@ -92,6 +93,11 @@ int main()
         btn2_status_old = btn2_status;
         if(btn2_status == 0) {
           bitInverse(PORTB, PB3);
+          if(volumeLvl == 2) {
+            volumeLvl = 0;
+          } else {
+            volumeLvl++;
+          }
           btn2_status_old = 1;
         }
       }
@@ -101,15 +107,10 @@ int main()
 
     int pt = 2000 * distance; // Pulse time in ms. pt is proportional to distance
     double led_strength = (read_adc())/1024.0; // strength is proportional to photoresistor value
-    pwmController(pt, buzzer_strength, led_strength);
+    pwmController(pt, buzzer_strength[volumeLvl], led_strength);
     _delay_ms(5);
   }
 }
-
-void debounceBtn() {
-
-}
-
 double getDistance() {
 
   long duration = 0;
