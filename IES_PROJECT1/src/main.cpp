@@ -10,7 +10,7 @@
 
 #define BUZZER_PWM_OUT PD6 // PWM output for Buzzer  (~6)
 #define LED_PWM_OUT PD5 // PWM output for LED        (~5) 
-#define ONOFF_LIGHT PD7 // LED indicator for ON/OFF   (0)
+#define ONOFF_LIGHT PD0 // LED indicator for ON/OFF   (0)
 
 #define UST PB5 // Ultrasonic sensor trigger pin     (13)
 #define USE PB4 // Ultrasonic sensor echo pin        (12)
@@ -43,8 +43,8 @@ bool btn2_status;
 
 /* for ISRs */
 int led_on = 1;
-int timer_on = 1;
-int volume = 0;
+bool timer_on = 1;
+volatile int volume = 0;
 volatile unsigned long numOV = 0;
 
 /* ISRs */
@@ -66,6 +66,8 @@ ISR(PCINT2_vect){
 
 int main()
 {
+  // usart_init(8);
+
   init_adc();
   init_btns();
   init_ISRs();
@@ -73,6 +75,9 @@ int main()
   bitSet(DDRD,ONOFF_LIGHT); // Set LED ON/OFF light to OUTPUT
   bitSet(DDRB,UST);         // Set Sensor TRIG to OUTPUT
   bitClear(DDRB,USE);       // Set Sensor ECHO to INPUT
+
+    // Array of buzzer volumes button2 switches through
+    double buzzer_strength[3] = {0.01, 0.04, 0.6};            // strength is proportional to volume
 
   while(1)
   {
@@ -82,13 +87,14 @@ int main()
     buttonRead1();
     buttonRead2();
 
-    // Array of buzzer volumes button2 switches through
-    double buzzer_strength[] = {0.01, 0.04, 0.3};             // strength is proportional to volume
-
     // Calculate distance and pulse time using Ultrasonic Sensor
     int pt = 2000 * getDistance();                            // Pulse time in ms. pt is proportional to distance
     double led_strength = (read_adc())/1023.0;                // strength is proportional to photoresistor value
     pwmController(pt, buzzer_strength[volume], led_strength); // volume according to button presses
+
+    // usart_tx_string(">A0:");
+    // usart_tx_float(led_strength,3,3);
+    // usart_transmit('\n');
 
     _delay_ms(5);
   }
@@ -220,7 +226,7 @@ void pwmController(int pulseTime, double buzzer_strength, double led_strength) {
 void buzzBuzzer(double volume)
 {
   bitSet(DDRD,BUZZER_PWM_OUT);
-  OCR0A = volume*(MAX/2); // Set OCR0A accordingly to volume(duty cycle)
+  OCR0A = volume*(MAX/3); // Set OCR0A accordingly to volume(duty cycle)
 }
 
 void blinkLED(double photoresInput) {
